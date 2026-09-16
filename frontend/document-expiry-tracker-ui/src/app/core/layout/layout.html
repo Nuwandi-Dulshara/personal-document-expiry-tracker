@@ -1,0 +1,80 @@
+<a class="skip-link" href="#main">Skip to content</a>
+@if (open()) {
+  <button class="nav-backdrop" aria-label="Close navigation" (click)="open.set(false)"></button>
+}
+<aside
+  class="sidebar"
+  [class.is-open]="open()"
+  [attr.inert]="mobile() && !open() ? '' : null"
+  [cdkTrapFocus]="mobile() && open()"
+  [cdkTrapFocusAutoCapture]="mobile() && open()"
+  (keydown.escape)="open.set(false)"
+>
+  <a class="brand" routerLink="/dashboard"
+    ><span class="brand-symbol"><app-icon name="shield" /></span
+    ><span
+      >Document<span class="brand-second">Tracker<span class="brand-dot">.</span></span></span
+    ></a
+  >
+  <button class="mobile-nav-close icon-button" aria-label="Close menu" (click)="open.set(false)">
+    <app-icon name="close" />
+  </button>
+  <div class="nav-caption">WORKSPACE</div>
+  <nav aria-label="Main navigation">
+    @for (link of links; track link.path) {
+      <a [routerLink]="'/' + link.path" routerLinkActive="selected" ariaCurrentWhenActive="page"
+        ><app-icon [name]="link.icon" />{{ link.label }}</a
+      >
+    }
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="peace-card">
+      <app-icon name="shield" /><strong>A little organization.<br />A lot of peace of mind.</strong>
+      <p>Your important dates,<br />all in one place.</p>
+      <span class="mini-line"></span>
+    </div>
+    <button class="logout" (click)="logout()"><app-icon name="logout" /> Log out</button>
+    <div class="sidebar-foot">PERSONAL DOCUMENT TRACKER</div>
+  </div>
+</aside>
+<div class="workspace">
+  <header class="topbar">
+    <div class="header-start">
+      <button
+        class="icon-button hamburger"
+        aria-label="Toggle navigation"
+        [attr.aria-expanded]="open()"
+        (click)="open.set(!open())"
+      >
+        <app-icon name="menu" /></button
+      ><span class="breadcrumb"
+        >Workspace <span>/</span> <strong>{{ title() }}</strong></span
+      >
+    </div>
+    <div class="header-end">
+      <span class="header-date">{{ today | date: 'EEE, d MMM yyyy' }}</span
+      ><a routerLink="/documents" class="icon-button" aria-label="Search documents"
+        ><app-icon name="search" /></a
+      ><a routerLink="/reminders" class="icon-button notification" aria-label="View reminders"
+        ><app-icon name="reminders" /><i></i></a
+      ><span class="header-divider"></span
+      ><a routerLink="/profile" class="user-link"
+        ><span class="avatar">{{ initials() }}</span
+        ><span class="user-text"
+          ><strong>{{ profile.user().fullName }}</strong
+          ><small>Personal account</small></span
+        ></a
+      >
+    </div>
+  </header>
+  <main id="main" tabindex="-1">
+    @if (store.storageWarning()) {
+      <div class="notice" role="status">{{ store.storageWarning() }}</div>
+    }
+    <router-outlet />
+  </main>
+  <footer class="app-footer">
+    <span>A place for every document. A reminder for every date.</span
+    ><span>Frontend demo · Saved in this browser</span>
+  </footer>
+</div>

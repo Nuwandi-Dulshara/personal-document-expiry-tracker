@@ -1,0 +1,138 @@
+<div class="auth-page">
+  <div class="auth-card">
+    <section class="auth-branding">
+      <a class="brand" routerLink="/login"
+        ><span class="brand-symbol"><app-icon name="shield" /></span
+        ><span
+          >Document<span class="brand-second">Tracker<span class="brand-dot">.</span></span></span
+        ></a
+      >
+      <div class="auth-story">
+        <span class="eyebrow">LESS TO REMEMBER. MORE PEACE OF MIND.</span>
+        <h1>Life gets busy.<br />Stay one step<br /><em>ahead.</em></h1>
+        <p>A home for your important documents.<br />A little help remembering what comes next.</p>
+        <div class="illustration-card">
+          <span class="document-symbol"><app-icon name="document" /></span>
+          <div>
+            <strong>Everything, in one place</strong
+            ><small>Organized. Up to date. Under control.</small>
+          </div>
+          <span class="check-circle"><app-icon name="check" /></span>
+        </div>
+      </div>
+      <p class="auth-brand-footer">YOUR DOCUMENTS. YOUR PEACE OF MIND.</p>
+    </section>
+    <section class="auth-form-panel">
+      <span class="subtle-tag">FRONTEND DEMO</span>
+      <h2>{{ register ? 'A more organized start.' : 'Welcome back.' }}</h2>
+      <p class="muted">
+        {{
+          register
+            ? 'Create your demo profile and get things in order.'
+            : 'Your important documents are right where you left them.'
+        }}
+      </p>
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (register) {
+          <label
+            >Full Name <span class="required">*</span
+            ><input formControlName="fullName" autocomplete="name" placeholder="Your full name" />
+            @if (invalid('fullName')) {
+              <small class="field-error">Enter your full name (up to 80 characters).</small>
+            }
+          </label>
+        }
+        <label
+          >Email <span class="required">*</span
+          ><input
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+          />
+          @if (invalid('email')) {
+            <small class="field-error">Enter a valid email address.</small>
+          }
+        </label>
+        @if (register) {
+          <label
+            >Phone<input
+              type="tel"
+              formControlName="phone"
+              autocomplete="tel"
+              placeholder="+94 77 123 4567"
+            />
+            @if (invalid('phone')) {
+              <small class="field-error">Enter a valid phone number.</small>
+            }
+          </label>
+        }
+        <label
+          ><span id="password-label">Password <span class="required">*</span></span>
+          <div class="password-field">
+            <input
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="password"
+              aria-labelledby="password-label"
+              [attr.autocomplete]="register ? 'new-password' : 'current-password'"
+              placeholder="At least 8 characters"
+            /><button
+              type="button"
+              (click)="showPassword.set(!showPassword())"
+              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            >
+              {{ showPassword() ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+          @if (invalid('password')) {
+            <small class="field-error">Use at least 8 characters.</small>
+          }
+        </label>
+        @if (register) {
+          <label
+            >Confirm Password <span class="required">*</span
+            ><input
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="confirmPassword"
+              autocomplete="new-password"
+              placeholder="Re-enter your password"
+            />
+            @if (
+              form.hasError('passwordMismatch') &&
+              (form.controls.confirmPassword.touched || submitted)
+            ) {
+              <small class="field-error">Passwords must match.</small>
+            }
+          </label>
+        } @else {
+          <button type="button" class="text-link forgot" (click)="forgot()">
+            Forgot Password?
+          </button>
+        }
+        @if (error()) {
+          <p role="alert" class="field-error">{{ error() }}</p>
+        }
+        <button class="btn primary full" [disabled]="busy()">
+          @if (busy()) {
+            <span class="spinner"></span>
+          }
+          {{ busy() ? 'Please wait...' : register ? 'Create Account' : 'Login'
+          }}<app-icon name="arrow" />
+        </button>
+      </form>
+      <div class="auth-switch">
+        {{ register ? 'Already have an account?' : 'New here?' }}
+        <a [routerLink]="register ? '/login' : '/register'">{{
+          register ? 'Login' : 'Create Account'
+        }}</a>
+      </div>
+      <div class="auth-demo">
+        <p>This is a frontend demo. No real account is created and passwords are not saved.</p>
+        <button class="btn secondary full" (click)="demo()">
+          Explore demo <app-icon name="arrow" />
+        </button>
+      </div>
+    </section>
+  </div>
+  <p class="auth-caption">A little organization goes a long way.</p>
+</div>
