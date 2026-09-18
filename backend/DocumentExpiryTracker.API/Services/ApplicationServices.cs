@@ -66,7 +66,15 @@ public class DocumentService(ApplicationDbContext db, IExpiryService expiry) : I
         if (!string.IsNullOrWhiteSpace(search)) query = query.Where(x => (x.DocumentName + " " + x.DocumentNumber + " " + x.IssuedBy).Contains(search));
         if (categoryId.HasValue) query = query.Where(x => x.CategoryId == categoryId);
         var documents = await query.ToListAsync();
-        var response = documents.Select(ToDto).Where(x => string.IsNullOrWhiteSpace(status) || x.Status.Equals(status, StringComparison.OrdinalIgnoreCase));
+        var normalizedStatus = status?.Trim().ToLowerInvariant() switch
+        {
+            "expiring-soon" => "expiring",
+            "expired" => "expired",
+            "active" => "active",
+            "expiring" => "expiring",
+            _ => status?.Trim().ToLowerInvariant()
+        };
+        var response = documents.Select(ToDto).Where(x => string.IsNullOrWhiteSpace(normalizedStatus) || x.Status == normalizedStatus);
         return (sortBy?.ToLowerInvariant(), sortDirection?.ToLowerInvariant()) switch
         {
             ("expirydate", "desc") => response.OrderByDescending(x => x.ExpiryDate).ToList(),
