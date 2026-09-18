@@ -139,6 +139,43 @@ public class DocumentService(ApplicationDbContext db, IExpiryService expiry) : I
 public class CategoryService(ApplicationDbContext db) : ICategoryService
 {
     public async Task<IReadOnlyList<CategoryResponseDto>> GetAsync() => await db.DocumentCategories.AsNoTracking().OrderBy(x => x.Name).Select(x => new CategoryResponseDto(x.Id, x.Name, x.Description)).ToListAsync();
+
+    public async Task<(bool Success, string? Error, CategoryResponseDto? Category)> CreateAsync(string name)
+    {
+        var value = name.Trim();
+        if (string.IsNullOrWhiteSpace(value)) return (false, "Category name is required.", null);
+        if (await db.DocumentCategories.AnyAsync(x => x.Name == value)) return (false, "A category with this name already exists.", null);
+
+        var category = new DocumentCategory { Name = value };
+        db.DocumentCategories.Add(category);
+        await db.SaveChangesAsync();
+        return (true, null, new CategoryResponseDto(category.Id, category.Name, category.Description));
+    }
+
+    public async Task<(bool Success, string? Error, CategoryResponseDto? Category)> UpdateAsync(int id, string name)
+    {
+        var value = name.Trim();
+        if (string.IsNullOrWhiteSpace(value)) return (false, "Category name is required.", null);
+
+        var category = await db.DocumentCategories.SingleOrDefaultAsync(x => x.Id == id);
+        if (category is null) return (false, "Category not found.", null);
+        if (await db.DocumentCategories.AnyAsync(x => x.Id != id && x.Name == value)) return (false, "A category with this name already exists.", null);
+
+        category.Name = value;
+        await db.SaveChangesAsync();
+        return (true, null, new CategoryResponseDto(category.Id, category.Name, category.Description));
+    }
+
+    public async Task<bool> DeleteAsync(int id)
+    {
+        var category = await db.DocumentCategories.Include(x => x.Documents).SingleOrDefaultAsync(x => x.Id == id);
+        if (category is null) return false;
+        if (category.Documents.Count > 0) return false;
+
+        db.DocumentCategories.Remove(category);
+        await db.SaveChangesAsync();
+        return true;
+    }
 }
 
 public class DashboardService(IDocumentService documents) : IDashboardService

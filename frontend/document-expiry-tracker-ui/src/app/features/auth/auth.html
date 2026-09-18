@@ -23,13 +23,13 @@
       <p class="auth-brand-footer">YOUR DOCUMENTS. YOUR PEACE OF MIND.</p>
     </section>
     <section class="auth-form-panel">
-      <span class="subtle-tag">FRONTEND DEMO</span>
+      <span class="subtle-tag">ACCOUNT ACCESS</span>
       <h2>{{ register ? 'A more organized start.' : 'Welcome back.' }}</h2>
       <p class="muted">
         {{
           register
-            ? 'Create your demo profile and get things in order.'
-            : 'Your important documents are right where you left them.'
+            ? 'Create your account and keep your important documents in one place.'
+            : 'Sign in to view and manage your documents.'
         }}
       </p>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
@@ -127,9 +127,9 @@
         }}</a>
       </div>
       <div class="auth-demo">
-        <p>This is a frontend demo. No real account is created and passwords are not saved.</p>
+        <p>Use your account details to continue and keep your records synced.</p>
         <button class="btn secondary full" (click)="demo()">
-          Explore demo <app-icon name="arrow" />
+          Continue with demo <app-icon name="arrow" />
         </button>
       </div>
     </section>

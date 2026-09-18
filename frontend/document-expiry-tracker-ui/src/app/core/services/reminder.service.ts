@@ -1,27 +1,62 @@
-import { Injectable, computed, inject } from '@angular/core';
-import { MockStore } from './mock-store';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { Reminder } from '../../shared/models/models';
+import { API_BASE_URL } from './api';
+import { AuthService } from './auth.service';
+
+interface BackendReminder {
+  id: number;
+  documentId: number;
+  documentName: string;
+  reminderDate: string;
+  isCompleted: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReminderService {
-  private store = inject(MockStore);
-  readonly reminders = computed<Reminder[]>(() =>
-    this.store
-      .state()
-      .documents.filter((d) => !!d.reminderDate)
-      .map((d) => ({
-        id: `${d.id}:${d.reminderDate}`,
-        documentId: d.id,
-        name: d.name,
-        date: d.reminderDate,
-        expiryDate: d.expiryDate,
-        dismissed: this.store.state().dismissed.includes(`${d.id}:${d.reminderDate}`),
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date)),
-  );
-  dismiss(id: string) {
-    this.store.update((s) => ({ ...s, dismissed: [...s.dismissed, id] }));
+  private http = inject(HttpClient);
+  private auth = inject(AuthService);
+  readonly reminders = signal<Reminder[]>([]);
+
+  constructor() {
+    void this.load();
   }
+
+  async load() {
+    if (!this.auth.loggedIn()) return;
+    try {
+      const response = await firstValueFrom(
+        this.http.get<BackendReminder[]>(`${API_BASE_URL}/api/reminders`, {
+          headers: this.auth.authHeaders(),
+        }),
+      );
+      this.reminders.set(
+        response
+          .map((item) => ({
+            id: String(item.id),
+            documentId: String(item.documentId),
+            name: item.documentName,
+            date: item.reminderDate.slice(0, 10),
+            expiryDate: '',
+            dismissed: item.isCompleted,
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date)),
+      );
+    } catch {
+      this.reminders.set([]);
+    }
+  }
+
+  dismiss(id: string) {
+    this.reminders.update((items) =>
+      items.map((item) => (item.id === id ? { ...item, dismissed: true } : item)),
+    );
+  }
+
   restore(id: string) {
-    this.store.update((s) => ({ ...s, dismissed: s.dismissed.filter((x) => x !== id) }));
+    this.reminders.update((items) =>
+      items.map((item) => (item.id === id ? { ...item, dismissed: false } : item)),
+    );
   }
 }
