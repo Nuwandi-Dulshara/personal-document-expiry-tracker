@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl } from '@
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ProfileService } from '../../core/services/profile.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { Icon, Feedback } from '../../shared/components/ui';
 @Component({
   selector: 'app-auth',
@@ -14,6 +15,7 @@ export class Auth {
   router = inject(Router);
   auth = inject(AuthService);
   profile = inject(ProfileService);
+  settings = inject(SettingsService);
   feedback = inject(Feedback);
   fb = inject(FormBuilder);
   register = this.route.snapshot.data['register'] === true;
@@ -52,16 +54,19 @@ export class Auth {
     this.busy.set(true);
     this.error.set('');
     try {
-      await new Promise((r) => setTimeout(r, 250));
       const v = this.form.getRawValue();
-      if (this.register)
-        this.profile.save({ fullName: v.fullName.trim(), email: v.email, phone: v.phone });
-      this.auth.login();
+      if (this.register) {
+        await this.auth.register(v.fullName.trim(), v.email, v.password, v.phone);
+        await this.profile.load();
+      } else {
+        await this.auth.login(v.email, v.password);
+        await this.profile.load();
+        await this.settings.load();
+      }
       await this.router.navigateByUrl('/dashboard');
-    } catch {
-      this.error.set(
-        'Unable to start the demo session. Please allow browser storage and try again.',
-      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to sign in. Please try again.';
+      this.error.set(message);
     } finally {
       this.busy.set(false);
     }

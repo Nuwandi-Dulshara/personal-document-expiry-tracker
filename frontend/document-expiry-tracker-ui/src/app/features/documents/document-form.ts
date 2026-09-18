@@ -81,7 +81,10 @@ export class DocumentForm {
     this.error.set('');
     try {
       await new Promise((r) => setTimeout(r, 250));
-      const d = this.docs.save({ ...this.form.getRawValue(), fileName: this.fileName() }, this.id);
+      const d = await this.docs.save(
+        { ...this.form.getRawValue(), fileName: this.fileName() },
+        this.id,
+      );
       this.feedback.toast(this.id ? 'Document updated.' : 'Document added.');
       await this.router.navigate(['/documents', d.id]);
     } catch (e) {
