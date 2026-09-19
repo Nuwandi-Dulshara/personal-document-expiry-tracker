@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DocumentService } from '../../core/services/document.service';
@@ -27,10 +27,10 @@ export class DocumentForm {
   route = inject(ActivatedRoute);
   fb = inject(FormBuilder);
   id = this.route.snapshot.paramMap.get('id') || undefined;
-  document = this.id ? this.docs.get(this.id) : undefined;
+  document = computed(() => (this.id ? this.docs.get(this.id) : undefined));
   busy = signal(false);
   error = signal('');
-  fileName = signal(this.document?.fileName || '');
+  fileName = signal('');
   submitted = false;
   form = this.fb.nonNullable.group(
     {
@@ -46,7 +46,14 @@ export class DocumentForm {
     { validators: dateOrder },
   );
   constructor() {
-    if (this.document) this.form.patchValue(this.document);
+    let hydratedDocumentId: string | undefined;
+    effect(() => {
+      const document = this.document();
+      if (!document || hydratedDocumentId === document.id) return;
+      this.form.patchValue(document);
+      this.fileName.set(document.fileName);
+      hydratedDocumentId = document.id;
+    });
   }
   invalid(name: string) {
     const c = this.form.get(name);

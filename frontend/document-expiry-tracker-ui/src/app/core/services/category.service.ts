@@ -27,8 +27,12 @@ export class CategoryService {
       );
       this.categories.set(response.map(normalizeCategory));
     } catch {
-      this.categories.set([]);
+      // Keep the last successful data when a refresh fails.
     }
+  }
+
+  clear() {
+    this.categories.set([]);
   }
 
   name(id: string) {

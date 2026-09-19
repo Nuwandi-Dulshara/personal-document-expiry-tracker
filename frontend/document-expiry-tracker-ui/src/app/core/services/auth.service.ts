@@ -15,32 +15,64 @@ export class AuthService {
   readonly loggedIn = signal(this.readSession());
   private readonly tokenKey = 'document-tracker-token';
   private readonly userKey = 'document-tracker-user';
+  private readonly demoKey = 'document-tracker-demo-v1';
+
+  private parseJwtPayload(token: string): { exp?: number } | null {
+    try {
+      const [, payload] = token.split('.');
+      if (!payload) return null;
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const decoded = decodeURIComponent(
+        Array.from(atob(padded), (char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`).join(''),
+      );
+      return JSON.parse(decoded) as { exp?: number };
+    } catch {
+      return null;
+    }
+  }
 
   private readSession() {
     try {
-      return (
-        !!localStorage.getItem(this.tokenKey) || sessionStorage.getItem('tracker-session') === 'demo'
-      );
+      const token = localStorage.getItem(this.tokenKey);
+      if (!token) return false;
+
+      const payload = this.parseJwtPayload(token);
+      if (!payload || payload.exp === undefined) return true;
+
+      const expired = Number(payload.exp) * 1000 <= Date.now();
+      if (expired) {
+        this.logout();
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
   }
 
+  private clearDemoState() {
+    localStorage.removeItem(this.demoKey);
+    sessionStorage.removeItem('tracker-session');
+  }
+
   authHeaders(): HttpHeaders {
     const token = localStorage.getItem(this.tokenKey);
-    return new HttpHeaders({ Authorization: `Bearer ${token ?? ''}` });
+    if (!token || !this.readSession()) {
+      return new HttpHeaders({ Authorization: 'Bearer ' });
+    }
+    return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }
 
   login(email?: string, password?: string) {
     if (!email || !password) {
-      sessionStorage.setItem('tracker-session', 'demo');
-      localStorage.removeItem('document-tracker-demo-v1');
-      this.loggedIn.set(true);
-      return Promise.resolve();
+      this.clearDemoState();
+      this.loggedIn.set(false);
+      return Promise.reject(new Error('Please sign in with a real account.'));
     }
 
-    localStorage.removeItem('document-tracker-demo-v1');
-    sessionStorage.removeItem('tracker-session');
+    this.clearDemoState();
 
     return firstValueFrom(
       this.http.post<AuthResponse>(`${API_BASE_URL}/api/auth/login`, {
@@ -51,14 +83,13 @@ export class AuthService {
       const user = normalizeUser(response.user);
       localStorage.setItem(this.tokenKey, response.token);
       localStorage.setItem(this.userKey, JSON.stringify(user));
-      this.loggedIn.set(true);
+      this.loggedIn.set(this.readSession());
       return user;
     });
   }
 
   register(fullName: string, email: string, password: string, phone?: string) {
-    localStorage.removeItem('document-tracker-demo-v1');
-    sessionStorage.removeItem('tracker-session');
+    this.clearDemoState();
 
     return firstValueFrom(
       this.http.post<AuthResponse>(`${API_BASE_URL}/api/auth/register`, {
@@ -72,7 +103,7 @@ export class AuthService {
       const user = normalizeUser(response.user);
       localStorage.setItem(this.tokenKey, response.token);
       localStorage.setItem(this.userKey, JSON.stringify(user));
-      this.loggedIn.set(true);
+      this.loggedIn.set(this.readSession());
       return user;
     });
   }
@@ -89,7 +120,13 @@ export class AuthService {
   logout() {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
-    sessionStorage.removeItem('tracker-session');
+    this.clearDemoState();
     this.loggedIn.set(false);
+  }
+
+  refreshSession() {
+    const hasValidSession = this.readSession();
+    this.loggedIn.set(hasValidSession);
+    return hasValidSession;
   }
 }

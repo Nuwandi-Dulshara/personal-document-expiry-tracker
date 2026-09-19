@@ -17,7 +17,13 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./core/layout/layout').then((m) => m.Layout),
-    canActivate: [() => inject(AuthService).loggedIn() || inject(Router).createUrlTree(['/login'])],
+    canActivate: [
+      () => {
+        const auth = inject(AuthService);
+        const router = inject(Router);
+        return auth.refreshSession() || router.createUrlTree(['/login']);
+      },
+    ],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       {

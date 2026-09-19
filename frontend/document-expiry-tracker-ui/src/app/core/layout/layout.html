@@ -55,8 +55,29 @@
       <span class="header-date">{{ today | date: 'EEE, d MMM yyyy' }}</span
       ><a routerLink="/documents" class="icon-button" aria-label="Search documents"
         ><app-icon name="search" /></a
-      ><a routerLink="/reminders" class="icon-button notification" aria-label="View reminders"
-        ><app-icon name="reminders" /><i></i></a
+      ><div #notificationWrap class="notification-wrap">
+        <button
+        type="button"
+        class="icon-button notification"
+        aria-controls="notification-panel"
+        [attr.aria-expanded]="notificationOpen()"
+        [attr.aria-label]="
+          notifications.unreadCount()
+            ? 'View notifications, ' + notifications.unreadCount() + ' unread'
+            : 'View notifications'
+        "
+        (click)="toggleNotifications()"
+        ><app-icon name="reminders" />
+        @if (notifications.unreadCount(); as count) {
+          <span class="notification-count" aria-hidden="true">{{ count > 99 ? '99+' : count }}</span>
+        }</button>
+        @if (notificationOpen()) {
+          <app-notification-panel
+            [notifications]="notifications.notifications()"
+            (closed)="notificationOpen.set(false)"
+          />
+        }
+      </div
       ><span class="header-divider"></span
       ><a routerLink="/profile" class="user-link"
         ><span class="avatar">{{ initials() }}</span
