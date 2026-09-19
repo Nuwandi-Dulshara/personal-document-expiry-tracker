@@ -6,6 +6,7 @@ import { DocumentService } from '../../core/services/document.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { SettingsService } from '../../core/services/settings.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { PageHeader, Icon, StatusBadge, EmptyState } from '../../shared/components/ui';
 @Component({
   selector: 'app-dashboard',
@@ -18,6 +19,7 @@ export class Dashboard {
   categories = inject(CategoryService);
   profile = inject(ProfileService);
   settings = inject(SettingsService);
+  notifications = inject(NotificationService);
   greeting =
     new Date().getHours() < 12
       ? 'Good morning'

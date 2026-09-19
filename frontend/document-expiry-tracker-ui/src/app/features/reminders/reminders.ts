@@ -1,85 +1,57 @@
-import { Component, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ReminderService } from '../../core/services/reminder.service';
-import { SettingsService } from '../../core/services/settings.service';
-import { dateOffset } from '../../core/services/mock-store';
-import { PageHeader, Icon, EmptyState, Feedback } from '../../shared/components/ui';
+import { NotificationService } from '../../core/services/notification.service';
+import { DocumentNotificationView, NotificationStatus } from '../../shared/models/notification';
+import { EmptyState, Icon, PageHeader } from '../../shared/components/ui';
+
 @Component({
   selector: 'app-reminders',
   imports: [DatePipe, RouterLink, PageHeader, Icon, EmptyState],
-  template: ` <app-page-header title="Reminders" subtitle="A gentle nudge, right when you need it."
-      ><a routerLink="/settings" class="btn secondary"
-        ><app-icon name="settings" />Reminder Settings</a
-      ></app-page-header
-    >
+  template: `
+    <app-page-header title="Reminders" subtitle="Your document expiry notifications, all in one place." />
     <div class="notice">
-      <app-icon name="reminders" /><span>{{
-        settings.settings().remindersEnabled
-          ? 'Reminders are enabled. This demo shows reminders here; no emails or SMS are sent.'
-          : 'Reminders are paused. Your scheduled dates are kept below. Enable reminders in Settings.'
-      }}</span>
+      <app-icon name="reminders" />Notifications update automatically from each document's reminder and expiry dates.
     </div>
-    @for (group of groups; track group) {
-      <section class="panel reminder-section">
+    @for (group of groups; track group.status) {
+      <section class="panel reminder-section" [attr.data-priority]="group.priority">
         <div class="section-heading">
-          <h2>{{ group }}</h2>
-          <span class="count-pill">{{ items(group).length }}</span>
+          <div><h2>{{ group.label }}</h2><p>{{ group.description }}</p></div>
+          <span class="count-pill">{{ items(group.status).length }}</span>
         </div>
-        @for (r of items(group); track r.id) {
-          <div class="reminder-row">
-            <span class="document-symbol"><app-icon name="reminders" /></span>
+        @for (item of items(group.status); track item.documentId) {
+          <article class="reminder-row notification-reminder-row">
+            <span class="document-symbol"><app-icon [name]="item.status === 'Expired' ? 'warning' : 'clock'" /></span>
             <div class="grow">
-              <a class="text-link" [routerLink]="['/documents', r.documentId]">{{ r.name }}</a>
-              <p>
-                Reminder: {{ r.date | date: 'dd MMM yyyy' }}
-                <span class="separator">·</span> Expires: {{ r.expiryDate | date: 'dd MMM yyyy' }}
-              </p>
+              <div class="notification-item-heading">
+                <a class="text-link" [routerLink]="['/documents', item.documentId]">{{ item.documentName }}</a>
+                <span class="notification-status">{{ group.label }}</span>
+              </div>
+              <p>{{ item.category }} · Expires {{ item.expiryDate | date: 'dd MMM yyyy' }}</p>
+              <strong>{{ item.message }}</strong>
             </div>
-            <button class="btn secondary" (click)="toggle(r.id, r.dismissed)">
-              {{ r.dismissed ? 'Restore' : 'Dismiss' }}
-            </button>
-          </div>
+            <a class="btn secondary" [routerLink]="['/documents', item.documentId]">View Document</a>
+          </article>
         } @empty {
-          <app-empty
-            [title]="
-              group === 'Completed / Dismissed'
-                ? 'No dismissed reminders'
-                : group === 'Today'
-                  ? 'You’re all caught up'
-                  : 'Nothing coming up'
-            "
-            [message]="
-              group === 'Upcoming'
-                ? 'Set a reminder date when adding or editing a document.'
-                : 'Your reminders will appear here.'
-            "
-          />
+          <app-empty [title]="'No ' + group.label.toLowerCase()" message="No documents currently match this status." />
         }
       </section>
-    }`,
+    }
+  `,
 })
 export class Reminders {
-  reminders = inject(ReminderService);
-  settings = inject(SettingsService);
-  feedback = inject(Feedback);
-  groups = ['Today', 'Upcoming', 'Completed / Dismissed'];
-  today = dateOffset(0);
-  items(group: string) {
-    return this.reminders
-      .reminders()
-      .filter((r) =>
-        group === 'Completed / Dismissed'
-          ? r.dismissed
-          : !r.dismissed && (group === 'Today' ? r.date <= this.today : r.date > this.today),
-      );
-  }
-  toggle(id: string, dismissed: boolean) {
-    try {
-      dismissed ? this.reminders.restore(id) : this.reminders.dismiss(id);
-      this.feedback.toast(dismissed ? 'Reminder restored.' : 'Reminder dismissed.');
-    } catch (e) {
-      this.feedback.error(e);
-    }
+  notifications = inject(NotificationService);
+  groups: Array<{
+    status: NotificationStatus;
+    label: string;
+    description: string;
+    priority: DocumentNotificationView['priority'];
+  }> = [
+    { status: 'ExpiresToday', label: 'Expires Today', description: 'Renew these documents today.', priority: 'high' },
+    { status: 'Expired', label: 'Expired', description: 'These documents are overdue.', priority: 'critical' },
+    { status: 'ReminderActive', label: 'Reminder Active', description: 'Prepare these documents for renewal.', priority: 'medium' },
+  ];
+  items(status: NotificationStatus) {
+    return this.notifications.notifications().filter((item) => item.status === status);
   }
 }

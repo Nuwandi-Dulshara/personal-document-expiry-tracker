@@ -16,43 +16,44 @@
     <p>Everything, in one place</p>
     <span class="stat-line neutral"></span
   ></a>
-  <a routerLink="/documents" [queryParams]="{ status: 'Active' }" class="stat-card"
-    ><div class="stat-top">
-      <span>Active</span><span class="stat-icon green"><app-icon name="shield" /></span>
-    </div>
-    <strong>{{ dashboard.summary().active }}</strong>
-    <p><span class="dot green-dot"></span>You're all set</p>
-    <span class="stat-line green"></span
-  ></a>
-  <a routerLink="/documents" [queryParams]="{ status: 'Expiring Soon' }" class="stat-card"
+  <a routerLink="/reminders" class="stat-card"
     ><div class="stat-top">
       <span>Expiring Soon</span><span class="stat-icon amber"><app-icon name="clock" /></span>
     </div>
-    <strong>{{ dashboard.summary().expiring }}</strong>
-    <p>Within the next {{ settings.settings().warningDays }} days</p>
+    <strong>{{ notifications.counts().reminderActive }}</strong>
+    <p>Reminder window is active</p>
     <span class="stat-line amber"></span
   ></a>
-  <a routerLink="/documents" [queryParams]="{ status: 'Expired' }" class="stat-card"
+  <a routerLink="/reminders" class="stat-card"
+    ><div class="stat-top">
+      <span>Expiring Today</span><span class="stat-icon amber"><app-icon name="warning" /></span>
+    </div>
+    <strong>{{ notifications.counts().expiresToday }}</strong>
+    <p>Renew these documents today</p>
+    <span class="stat-line amber"></span
+  ></a>
+  <a routerLink="/reminders" class="stat-card"
     ><div class="stat-top">
       <span>Expired</span><span class="stat-icon red"><app-icon name="warning" /></span>
     </div>
-    <strong>{{ dashboard.summary().expired }}</strong>
+    <strong>{{ notifications.counts().expired }}</strong>
     <p>A little attention needed</p>
     <span class="stat-line red"></span
   ></a>
 </section>
-@if (dashboard.summary().expiring || dashboard.summary().expired) {
+@if (notifications.counts().total) {
   <div class="attention-banner">
     <span class="banner-icon"><app-icon name="clock" /></span>
     <div>
       <strong>Stay one step ahead.</strong>
       <p>
-        {{ dashboard.summary().expiring }} documents are expiring soon and
-        {{ dashboard.summary().expired }} need renewal. A quick check now brings peace of mind
+        {{ notifications.counts().reminderActive }} reminders are active,
+        {{ notifications.counts().expiresToday }} expire today, and
+        {{ notifications.counts().expired }} are expired. A quick check now brings peace of mind
         later.
       </p>
     </div>
-    <a routerLink="/documents" [queryParams]="{ status: 'Expiring Soon' }"
+    <a routerLink="/reminders"
       >Review documents <app-icon name="arrow"
     /></a>
   </div>
@@ -61,34 +62,38 @@
   <section class="panel">
     <div class="section-heading">
       <div>
-        <h2>Upcoming Expirations</h2>
-        <p>A heads-up for what's coming next.</p>
+        <h2>Expiry Notifications</h2>
+        <p>Documents that need your attention.</p>
       </div>
       <span class="subtle-tag">By expiry date</span>
     </div>
     <div class="upcoming-list">
-      @for (d of dashboard.upcoming(); track d.id) {
-        <a class="upcoming-row" [routerLink]="['/documents', d.id]"
+      @for (item of notifications.notifications().slice(0, 5); track item.documentId) {
+        <a class="upcoming-row" [routerLink]="['/documents', item.documentId]"
           ><span class="document-symbol"><app-icon name="document" /></span>
           <div class="grow">
-            <strong>{{ d.name }}</strong
+            <strong>{{ item.documentName }}</strong
             ><small
-              >{{ categories.name(d.categoryId) }} <span class="separator">·</span>
-              {{ d.expiryDate | date: 'dd MMM yyyy' }}</small
+              >{{ item.category }} <span class="separator">·</span>
+              {{ item.expiryDate | date: 'dd MMM yyyy' }}</small
             >
           </div>
           <div class="align-right">
-            <span class="remaining" [class.urgent]="docs.days(d) <= 30">{{
-              docs.days(d) === 0 ? 'Expires today' : docs.days(d) + ' days left'
+            <span class="remaining urgent">{{
+              item.status === 'ExpiresToday'
+                ? 'Expires today'
+                : item.status === 'Expired'
+                  ? item.days + ' days overdue'
+                  : item.days + ' days left'
             }}</span
-            ><app-status [status]="docs.status(d)" /></div
+            ></div
         ></a>
       } @empty {
-        <app-empty title="All clear" message="Add documents to see upcoming expiry dates." />
+        <app-empty title="All clear" message="No document notifications apply today." />
       }
     </div>
-    <a class="panel-bottom-link" routerLink="/documents"
-      >View all documents <app-icon name="arrow"
+    <a class="panel-bottom-link" routerLink="/reminders"
+      >View all notifications <app-icon name="arrow"
     /></a>
   </section>
   <section class="panel quick-panel">

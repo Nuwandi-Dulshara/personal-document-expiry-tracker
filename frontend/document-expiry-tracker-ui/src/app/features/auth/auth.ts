@@ -4,6 +4,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { SettingsService } from '../../core/services/settings.service';
+import { DocumentService } from '../../core/services/document.service';
+import { CategoryService } from '../../core/services/category.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { Icon, Feedback } from '../../shared/components/ui';
 @Component({
   selector: 'app-auth',
@@ -16,6 +19,9 @@ export class Auth {
   auth = inject(AuthService);
   profile = inject(ProfileService);
   settings = inject(SettingsService);
+  documents = inject(DocumentService);
+  categories = inject(CategoryService);
+  notifications = inject(NotificationService);
   feedback = inject(Feedback);
   fb = inject(FormBuilder);
   register = this.route.snapshot.data['register'] === true;
@@ -57,12 +63,19 @@ export class Auth {
       const v = this.form.getRawValue();
       if (this.register) {
         await this.auth.register(v.fullName.trim(), v.email, v.password, v.phone);
-        await this.profile.load();
       } else {
         await this.auth.login(v.email, v.password);
-        await this.profile.load();
-        await this.settings.load();
       }
+      this.documents.clear();
+      this.categories.clear();
+      this.notifications.clear();
+      await Promise.all([
+        this.profile.load(),
+        this.settings.load(),
+        this.documents.load(),
+        this.categories.load(),
+        this.notifications.loadReadState(),
+      ]);
       await this.router.navigateByUrl('/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to sign in. Please try again.';
@@ -71,17 +84,7 @@ export class Auth {
       this.busy.set(false);
     }
   }
-  demo() {
-    try {
-      this.auth.login();
-      this.router.navigateByUrl('/dashboard');
-    } catch {
-      this.error.set('Please allow browser storage to start the demo.');
-    }
-  }
   forgot() {
-    this.feedback.toast(
-      'Password recovery will be available when accounts are connected. For now, use Explore demo.',
-    );
+    this.feedback.toast('Password recovery will be available soon.');
   }
 }
