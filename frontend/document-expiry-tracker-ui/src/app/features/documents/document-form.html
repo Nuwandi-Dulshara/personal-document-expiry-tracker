@@ -1,0 +1,155 @@
+@if (id && !document) {
+  <app-empty title="Document not found" message="This document may have been deleted."
+    ><a class="btn primary" routerLink="/documents">Back to Documents</a></app-empty
+  >
+} @else {
+  <app-page-header
+    [title]="id ? 'Edit Document' : 'Add Document'"
+    [subtitle]="
+      id
+        ? 'Keep your document details up to date.'
+        : 'A few details today. One less thing to remember tomorrow.'
+    "
+  />
+  <form class="document-form" [formGroup]="form" (ngSubmit)="save()">
+    <div class="form-main">
+      <section class="panel form-section">
+        <div class="section-heading">
+          <div>
+            <h2>Basic Information</h2>
+            <p>Give your document a name and a place in your collection.</p>
+          </div>
+          <span class="section-number">01</span>
+        </div>
+        <div class="form-grid">
+          <label
+            >Document Name <span class="required">*</span
+            ><input
+              formControlName="name"
+              placeholder="e.g. Sri Lankan Passport"
+              [attr.aria-invalid]="invalid('name')"
+            />
+            @if (invalid('name')) {
+              <small class="field-error">Enter a document name (up to 100 characters).</small>
+            }</label
+          ><label
+            >Category <span class="required">*</span
+            ><select formControlName="categoryId">
+              <option value="">Select a category</option>
+              @for (c of categories.categories(); track c.id) {
+                <option [value]="c.id">{{ c.name }}</option>
+              }
+            </select>
+            @if (invalid('categoryId')) {
+              <small class="field-error">Choose a category.</small>
+            }</label
+          ><label
+            >Document Number<input
+              formControlName="number"
+              placeholder="e.g. N 1234567"
+              maxlength="80" /></label
+          ><label
+            >Issued By<input
+              formControlName="issuer"
+              placeholder="Organization or authority"
+              maxlength="120"
+          /></label>
+        </div>
+      </section>
+      <section class="panel form-section">
+        <div class="section-heading">
+          <div>
+            <h2>Important Dates</h2>
+            <p>We'll help you keep an eye on the dates that matter.</p>
+          </div>
+          <span class="section-number">02</span>
+        </div>
+        <div class="form-grid dates-grid">
+          <label>Issue Date<input type="date" formControlName="issueDate" /></label
+          ><label
+            >Expiry Date <span class="required">*</span
+            ><input type="date" formControlName="expiryDate" (change)="setDefaultReminder()" />
+            @if (invalid('expiryDate')) {
+              <small class="field-error">Choose an expiry date.</small>
+            }</label
+          ><label>Reminder Date<input type="date" formControlName="reminderDate" /></label>
+        </div>
+        @if (form.hasError('dateOrder')) {
+          <p class="field-error" role="alert">
+            Issue date and reminder date must be on or before the expiry date.
+          </p>
+        }
+        <div class="inline-tip">
+          <app-icon name="reminders" />New reminders default to
+          {{ settings.settings().reminderDays }} days before expiry. You can choose another date.
+        </div>
+      </section>
+      <section class="panel form-section">
+        <div class="section-heading">
+          <div>
+            <h2>Additional Information</h2>
+            <p>Anything else you'd like to remember.</p>
+          </div>
+          <span class="section-number">03</span>
+        </div>
+        <label
+          >Description / Notes<textarea
+            formControlName="notes"
+            rows="4"
+            maxlength="2000"
+            placeholder="Renewal details, useful contacts, or a note to your future self..."
+          ></textarea>
+        </label>
+      </section>
+    </div>
+    <aside class="form-aside">
+      <section class="panel form-section">
+        <h2>Attached File</h2>
+        <p class="muted">Keep a reference to your document.</p>
+        <label class="upload-area"
+          ><app-icon name="upload" /><strong>Choose a document</strong
+          ><span>PDF, JPG or PNG · Up to 10 MB</span
+          ><input
+            #fileInput
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            (change)="selectFile($event)"
+        /></label>
+        @if (fileName()) {
+          <div class="file-preview">
+            <app-icon /><span>{{ fileName() }}</span
+            ><button
+              type="button"
+              class="icon-button"
+              aria-label="Remove attachment"
+              (click)="fileName.set(''); fileInput.value = ''"
+            >
+              <app-icon name="close" />
+            </button>
+          </div>
+        }
+        <p class="small-note">
+          Demo mode: only the file name is saved. File contents are not uploaded or stored.
+        </p>
+      </section>
+      <div class="help-card">
+        <app-icon name="shield" />
+        <h3>Small steps, less stress.</h3>
+        <p>Add the details you have. You can always come back and update them later.</p>
+        <p>Fields marked <span class="required">*</span> are required.</p>
+      </div>
+    </aside>
+    <div class="form-footer">
+      @if (error()) {
+        <p class="field-error" role="alert">{{ error() }}</p>
+      }
+      <a class="btn secondary" [routerLink]="id ? ['/documents', id] : ['/documents']">Cancel</a
+      ><button class="btn primary" type="submit" [disabled]="busy()">
+        @if (busy()) {
+          <span class="spinner"></span>
+        }
+        {{ busy() ? 'Saving...' : id ? 'Update Document' : 'Save Document' }}
+      </button>
+    </div>
+  </form>
+}

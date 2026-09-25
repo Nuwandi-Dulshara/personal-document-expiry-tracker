@@ -1,0 +1,171 @@
+<app-page-header
+  [title]="greeting + ', ' + profile.user().fullName.split(' ')[0]"
+  subtitle="A little overview of your important documents. You're in the right place."
+  eyebrow="LET'S KEEP LIFE ORGANIZED"
+  ><a class="btn primary" routerLink="/documents/add"
+    ><app-icon name="plus" />Add Document</a
+  ></app-page-header
+>
+<section class="stats-grid" aria-label="Document statistics">
+  <a routerLink="/documents" class="stat-card"
+    ><div class="stat-top">
+      <span>Total Documents</span
+      ><span class="stat-icon neutral"><app-icon name="document" /></span>
+    </div>
+    <strong>{{ dashboard.summary().total }}</strong>
+    <p>Everything, in one place</p>
+    <span class="stat-line neutral"></span
+  ></a>
+  <a routerLink="/documents" [queryParams]="{ status: 'Active' }" class="stat-card"
+    ><div class="stat-top">
+      <span>Active</span><span class="stat-icon green"><app-icon name="shield" /></span>
+    </div>
+    <strong>{{ dashboard.summary().active }}</strong>
+    <p><span class="dot green-dot"></span>You're all set</p>
+    <span class="stat-line green"></span
+  ></a>
+  <a routerLink="/documents" [queryParams]="{ status: 'Expiring Soon' }" class="stat-card"
+    ><div class="stat-top">
+      <span>Expiring Soon</span><span class="stat-icon amber"><app-icon name="clock" /></span>
+    </div>
+    <strong>{{ dashboard.summary().expiring }}</strong>
+    <p>Within the next {{ settings.settings().warningDays }} days</p>
+    <span class="stat-line amber"></span
+  ></a>
+  <a routerLink="/documents" [queryParams]="{ status: 'Expired' }" class="stat-card"
+    ><div class="stat-top">
+      <span>Expired</span><span class="stat-icon red"><app-icon name="warning" /></span>
+    </div>
+    <strong>{{ dashboard.summary().expired }}</strong>
+    <p>A little attention needed</p>
+    <span class="stat-line red"></span
+  ></a>
+</section>
+@if (dashboard.summary().expiring || dashboard.summary().expired) {
+  <div class="attention-banner">
+    <span class="banner-icon"><app-icon name="clock" /></span>
+    <div>
+      <strong>Stay one step ahead.</strong>
+      <p>
+        {{ dashboard.summary().expiring }} documents are expiring soon and
+        {{ dashboard.summary().expired }} need renewal. A quick check now brings peace of mind
+        later.
+      </p>
+    </div>
+    <a routerLink="/documents" [queryParams]="{ status: 'Expiring Soon' }"
+      >Review documents <app-icon name="arrow"
+    /></a>
+  </div>
+}
+<div class="dashboard-columns">
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Upcoming Expirations</h2>
+        <p>A heads-up for what's coming next.</p>
+      </div>
+      <span class="subtle-tag">By expiry date</span>
+    </div>
+    <div class="upcoming-list">
+      @for (d of dashboard.upcoming(); track d.id) {
+        <a class="upcoming-row" [routerLink]="['/documents', d.id]"
+          ><span class="document-symbol"><app-icon name="document" /></span>
+          <div class="grow">
+            <strong>{{ d.name }}</strong
+            ><small
+              >{{ categories.name(d.categoryId) }} <span class="separator">·</span>
+              {{ d.expiryDate | date: 'dd MMM yyyy' }}</small
+            >
+          </div>
+          <div class="align-right">
+            <span class="remaining" [class.urgent]="docs.days(d) <= 30">{{
+              docs.days(d) === 0 ? 'Expires today' : docs.days(d) + ' days left'
+            }}</span
+            ><app-status [status]="docs.status(d)" /></div
+        ></a>
+      } @empty {
+        <app-empty title="All clear" message="Add documents to see upcoming expiry dates." />
+      }
+    </div>
+    <a class="panel-bottom-link" routerLink="/documents"
+      >View all documents <app-icon name="arrow"
+    /></a>
+  </section>
+  <section class="panel quick-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Quick Actions</h2>
+        <p>A shortcut to your next step.</p>
+      </div>
+    </div>
+    <a class="quick-action featured" routerLink="/documents/add"
+      ><span class="quick-icon"><app-icon name="plus" /></span
+      ><span><strong>Add Document</strong><small>Keep something important safe</small></span
+      ><app-icon name="arrow" /></a
+    ><a class="quick-action" routerLink="/documents"
+      ><span class="quick-icon"><app-icon name="document" /></span
+      ><span><strong>View Documents</strong><small>Browse your collection</small></span
+      ><app-icon name="arrow" /></a
+    ><a class="quick-action" routerLink="/documents" [queryParams]="{ status: 'Expiring Soon' }"
+      ><span class="quick-icon"><app-icon name="clock" /></span
+      ><span><strong>View Expiring Soon</strong><small>Plan your next renewals</small></span
+      ><app-icon name="arrow" /></a
+    ><a class="quick-action" routerLink="/documents" [queryParams]="{ status: 'Expired' }"
+      ><span class="quick-icon"><app-icon name="warning" /></span
+      ><span><strong>View Expired</strong><small>See what needs attention</small></span
+      ><app-icon name="arrow"
+    /></a>
+  </section>
+</div>
+<section class="panel recent-panel">
+  <div class="section-heading">
+    <div>
+      <h2>Recent Documents</h2>
+      <p>The latest additions to your collection.</p>
+    </div>
+    <a class="text-link" routerLink="/documents">View all <app-icon name="arrow" /></a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>DOCUMENT NAME</th>
+          <th>CATEGORY</th>
+          <th>EXPIRY DATE</th>
+          <th>STATUS</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of dashboard.recent(); track d.id) {
+          <tr>
+            <td>
+              <a class="document-name" [routerLink]="['/documents', d.id]"
+                ><span class="document-symbol small"><app-icon name="document" /></span
+                >{{ d.name }}</a
+              >
+            </td>
+            <td>{{ categories.name(d.categoryId) }}</td>
+            <td>{{ d.expiryDate | date: 'dd MMM yyyy' }}</td>
+            <td><app-status [status]="docs.status(d)" /></td>
+            <td>
+              <a
+                class="icon-button"
+                [routerLink]="['/documents', d.id]"
+                [attr.aria-label]="'View ' + d.name"
+                ><app-icon name="arrow"
+              /></a>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (!dashboard.recent().length) {
+    <app-empty
+      title="No documents yet"
+      message="Add your first document to start tracking important expiry dates."
+      ><a routerLink="/documents/add" class="btn primary">Add Document</a></app-empty
+    >
+  }
+</section>

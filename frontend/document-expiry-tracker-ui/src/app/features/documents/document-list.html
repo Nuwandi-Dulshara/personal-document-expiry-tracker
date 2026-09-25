@@ -1,0 +1,153 @@
+<app-page-header title="Documents" subtitle="Manage and monitor all your important documents."
+  ><a class="btn primary" routerLink="/documents/add"
+    ><app-icon name="plus" />Add Document</a
+  ></app-page-header
+>
+<section class="panel">
+  <div class="filter-bar">
+    <label class="search-field"
+      ><span class="sr-only">Search documents</span><app-icon name="search" /><input
+        type="search"
+        placeholder="Search documents..."
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event); page.set(1)" /></label
+    ><label
+      >Status<select [ngModel]="status()" (ngModelChange)="status.set($event); page.set(1)">
+        <option value="">All statuses</option>
+        @for (s of statuses; track s) {
+          <option [value]="s">{{ s }}</option>
+        }
+      </select></label
+    ><label
+      >Category<select [ngModel]="category()" (ngModelChange)="category.set($event); page.set(1)">
+        <option value="">All categories</option>
+        @for (c of categories.categories(); track c.id) {
+          <option [value]="c.id">{{ c.name }}</option>
+        }
+      </select></label
+    ><label
+      >Expires on or before<input
+        type="date"
+        [ngModel]="expiry()"
+        (ngModelChange)="expiry.set($event); page.set(1)" /></label
+    ><button class="btn subtle" (click)="reset()">Reset</button>
+  </div>
+  <div class="collection-meta">
+    <strong
+      >Your collection <span class="count-pill">{{ filtered().length }}</span></strong
+    ><span>Keep the important things up to date.</span>
+  </div>
+  @if (visible().length) {
+    <div class="table-wrap document-table">
+      <table>
+        <thead>
+          <tr>
+            <th>DOCUMENT</th>
+            <th>CATEGORY</th>
+            <th class="tablet-hide">DOCUMENT NUMBER</th>
+            <th class="tablet-hide">ISSUE DATE</th>
+            <th>EXPIRY DATE</th>
+            <th>DAYS REMAINING</th>
+            <th>STATUS</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of visible(); track d.id) {
+            <tr>
+              <td>
+                <a class="document-name" [routerLink]="['/documents', d.id]"
+                  ><span class="document-symbol small"><app-icon /></span
+                  ><span
+                    >{{ d.name }}<small>{{ d.issuer }}</small></span
+                  ></a
+                >
+              </td>
+              <td>{{ categories.name(d.categoryId) }}</td>
+              <td class="tablet-hide">{{ d.number || '—' }}</td>
+              <td class="tablet-hide">
+                {{ d.issueDate ? (d.issueDate | date: 'dd MMM yyyy') : '—' }}
+              </td>
+              <td>{{ d.expiryDate | date: 'dd MMM yyyy' }}</td>
+              <td>
+                {{
+                  docs.days(d) < 0
+                    ? -docs.days(d) + ' days overdue'
+                    : docs.days(d) === 0
+                      ? 'Today'
+                      : docs.days(d) + ' days'
+                }}
+              </td>
+              <td><app-status [status]="docs.status(d)" /></td>
+              <td>
+                <div class="row-actions">
+                  <a [routerLink]="['/documents', d.id]" class="text-link">View</a
+                  ><a
+                    class="icon-button"
+                    [routerLink]="['/documents', d.id, 'edit']"
+                    [attr.aria-label]="'Edit ' + d.name"
+                    ><app-icon name="edit" /></a
+                  ><button
+                    class="icon-button danger-text"
+                    [attr.aria-label]="'Delete ' + d.name"
+                    (click)="remove(d)"
+                  >
+                    <app-icon name="trash" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="document-mobile-list">
+      @for (d of visible(); track d.id) {
+        <article class="document-mobile-card">
+          <div class="card-title-row">
+            <a [routerLink]="['/documents', d.id]"
+              ><strong>{{ d.name }}</strong></a
+            ><app-status [status]="docs.status(d)" />
+          </div>
+          <p>{{ categories.name(d.categoryId) }} · {{ d.number || 'No number' }}</p>
+          <div class="card-title-row">
+            <span>Expires {{ d.expiryDate | date: 'dd MMM yyyy' }}</span
+            ><strong>{{
+              docs.days(d) < 0 ? -docs.days(d) + ' days overdue' : docs.days(d) + ' days left'
+            }}</strong>
+          </div>
+          <div class="row-actions">
+            <a [routerLink]="['/documents', d.id]" class="btn subtle">View</a
+            ><a [routerLink]="['/documents', d.id, 'edit']" class="btn subtle">Edit</a
+            ><button class="btn danger-outline" (click)="remove(d)">Delete</button>
+          </div>
+        </article>
+      }
+    </div>
+    <div class="pagination">
+      <span>Page {{ page() }} of {{ pages() }} · {{ filtered().length }} documents</span>
+      <div>
+        <button class="btn subtle" [disabled]="page() === 1" (click)="page.set(page() - 1)">
+          Previous</button
+        ><button class="btn subtle" [disabled]="page() === pages()" (click)="page.set(page() + 1)">
+          Next
+        </button>
+      </div>
+    </div>
+  } @else {
+    <app-empty
+      [title]="docs.documents().length ? 'No matching documents' : 'No documents yet'"
+      [message]="
+        docs.documents().length
+          ? 'Try a different search or clear your filters.'
+          : 'Add your first document to start tracking important expiry dates.'
+      "
+    >
+      @if (docs.documents().length) {
+        <button class="btn secondary" (click)="reset()">Clear filters</button>
+      } @else {
+        <a class="btn primary" routerLink="/documents/add">Add Document</a>
+      }
+    </app-empty>
+  }
+</section>
