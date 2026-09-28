@@ -28,8 +28,12 @@ export class DocumentService {
       );
       this.documents.set(response.map(normalizeDocument));
     } catch {
-      this.documents.set([]);
+      // Keep the last successful data when a refresh fails.
     }
+  }
+
+  clear() {
+    this.documents.set([]);
   }
 
   get(id: string) {

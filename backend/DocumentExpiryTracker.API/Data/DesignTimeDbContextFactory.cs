@@ -9,7 +9,7 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Applicatio
     {
         var connectionString = "Server=localhost;Port=3306;Database=document_expiry_tracker;User=root;Password=;SslMode=None;";
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+            .UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 0)))
             .Options;
         return new ApplicationDbContext(options);
     }

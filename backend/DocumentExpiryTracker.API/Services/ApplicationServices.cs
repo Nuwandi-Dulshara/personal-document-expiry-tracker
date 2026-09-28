@@ -13,9 +13,9 @@ namespace DocumentExpiryTracker.API.Services;
 
 public class ExpiryService : IExpiryService
 {
-    public (string Status, int DaysRemaining) Calculate(DateTime expiryDate, DateTime? today = null)
+    public (string Status, int DaysRemaining) Calculate(DateOnly expiryDate, DateOnly? today = null)
     {
-        var days = (expiryDate.Date - (today ?? DateTime.UtcNow).Date).Days;
+        var days = expiryDate.DayNumber - (today ?? DateOnly.FromDateTime(DateTime.Now)).DayNumber;
         return (days < 0 ? "expired" : days <= 30 ? "expiring" : "active", days);
     }
 }
@@ -97,17 +97,34 @@ public class DocumentService(ApplicationDbContext db, IExpiryService expiry) : I
         var document = new Document { UserId = userId, CategoryId = request.CategoryId, DocumentName = request.DocumentName.Trim(), DocumentNumber = request.DocumentNumber?.Trim(), IssuedBy = request.IssuedBy?.Trim(), IssueDate = request.IssueDate, ExpiryDate = request.ExpiryDate!.Value, ReminderDate = request.ReminderDate, Description = request.Description?.Trim() };
         db.Documents.Add(document);
         await db.SaveChangesAsync();
+        if (request.ReminderDate.HasValue)
+        {
+            db.Reminders.Add(new Reminder { DocumentId = document.Id, ReminderDate = request.ReminderDate.Value.ToDateTime(TimeOnly.MinValue) });
+            await db.SaveChangesAsync();
+        }
         await db.Entry(document).Reference(x => x.Category).LoadAsync();
         return (true, null, ToDto(document));
     }
 
     public async Task<(bool Success, string? Error, DocumentResponseDto? Document)> UpdateAsync(int userId, int id, UpdateDocumentDto request)
     {
-        var document = await db.Documents.Include(x => x.Category).SingleOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+        var document = await db.Documents.Include(x => x.Category).Include(x => x.Reminders).SingleOrDefaultAsync(x => x.Id == id && x.UserId == userId);
         if (document is null) return (false, "Document not found.", null);
         var error = await Validate(request.CategoryId, request.IssueDate, request.ExpiryDate, request.ReminderDate);
         if (error is not null) return (false, error, null);
         document.CategoryId = request.CategoryId; document.DocumentName = request.DocumentName.Trim(); document.DocumentNumber = request.DocumentNumber?.Trim(); document.IssuedBy = request.IssuedBy?.Trim(); document.IssueDate = request.IssueDate; document.ExpiryDate = request.ExpiryDate!.Value; document.ReminderDate = request.ReminderDate; document.Description = request.Description?.Trim(); document.UpdatedAt = DateTime.UtcNow;
+        var reminder = document.Reminders.FirstOrDefault();
+        if (request.ReminderDate.HasValue)
+        {
+            if (reminder is null)
+                db.Reminders.Add(new Reminder { DocumentId = document.Id, ReminderDate = request.ReminderDate.Value.ToDateTime(TimeOnly.MinValue) });
+            else
+                reminder.ReminderDate = request.ReminderDate.Value.ToDateTime(TimeOnly.MinValue);
+        }
+        else if (reminder is not null)
+        {
+            db.Reminders.Remove(reminder);
+        }
         await db.SaveChangesAsync();
         await db.Entry(document).Reference(x => x.Category).LoadAsync();
         return (true, null, ToDto(document));
@@ -120,12 +137,12 @@ public class DocumentService(ApplicationDbContext db, IExpiryService expiry) : I
         db.Documents.Remove(document); await db.SaveChangesAsync(); return true;
     }
 
-    private async Task<string?> Validate(int categoryId, DateTime? issueDate, DateTime? expiryDate, DateTime? reminderDate)
+    private async Task<string?> Validate(int categoryId, DateOnly? issueDate, DateOnly? expiryDate, DateOnly? reminderDate)
     {
         if (!await db.DocumentCategories.AnyAsync(x => x.Id == categoryId)) return "Invalid category.";
         if (!expiryDate.HasValue) return "Expiry date is required.";
-        if (issueDate.HasValue && expiryDate.Value.Date < issueDate.Value.Date) return "Expiry date cannot be before issue date.";
-        if (reminderDate.HasValue && reminderDate.Value.Date > expiryDate.Value.Date) return "Reminder date cannot be after expiry date.";
+        if (issueDate.HasValue && expiryDate.Value < issueDate.Value) return "Expiry date cannot be before issue date.";
+        if (reminderDate.HasValue && reminderDate.Value > expiryDate.Value) return "Reminder date cannot be after expiry date.";
         return null;
     }
 
@@ -209,12 +226,30 @@ public class SettingsService(ApplicationDbContext db) : ISettingsService
 
 public class ReminderService(ApplicationDbContext db) : IReminderService
 {
-    public async Task<IReadOnlyList<ReminderDto>> GetAsync(int userId) => await db.Reminders.AsNoTracking().Include(x => x.Document).Where(x => x.Document.UserId == userId).OrderBy(x => x.ReminderDate).Select(x => new ReminderDto(x.Id, x.DocumentId, x.Document.DocumentName, x.ReminderDate, x.IsCompleted)).ToListAsync();
+    public async Task<IReadOnlyList<ReminderDto>> GetAsync(int userId)
+    {
+        var documentsMissingReminders = await db.Documents
+            .Where(x => x.UserId == userId && x.ReminderDate.HasValue && !x.Reminders.Any())
+            .ToListAsync();
+        if (documentsMissingReminders.Count > 0)
+        {
+            db.Reminders.AddRange(documentsMissingReminders.Select(x =>
+                new Reminder { DocumentId = x.Id, ReminderDate = x.ReminderDate!.Value.ToDateTime(TimeOnly.MinValue) }));
+            await db.SaveChangesAsync();
+        }
+
+        return await db.Reminders.AsNoTracking().Include(x => x.Document)
+            .Where(x => x.Document.UserId == userId)
+            .OrderBy(x => x.ReminderDate)
+            .Select(x => new ReminderDto(x.Id, x.DocumentId, x.Document.DocumentName,
+                x.ReminderDate, x.Document.ExpiryDate, x.IsCompleted))
+            .ToListAsync();
+    }
     public async Task<(bool Success, string? Error, ReminderDto? Reminder)> CreateAsync(int userId, CreateReminderDto request)
     {
-        var document = await db.Documents.SingleOrDefaultAsync(x => x.Id == request.DocumentId && x.UserId == userId); if (document is null) return (false, "Document not found.", null); if (request.ReminderDate > document.ExpiryDate) return (false, "Reminder date cannot be after expiry date.", null);
-        var reminder = new Reminder { DocumentId = document.Id, ReminderDate = request.ReminderDate!.Value }; db.Reminders.Add(reminder); await db.SaveChangesAsync(); return (true, null, new(reminder.Id, document.Id, document.DocumentName, reminder.ReminderDate, reminder.IsCompleted));
+        var document = await db.Documents.SingleOrDefaultAsync(x => x.Id == request.DocumentId && x.UserId == userId); if (document is null) return (false, "Document not found.", null); if (request.ReminderDate.HasValue && DateOnly.FromDateTime(request.ReminderDate.Value) > document.ExpiryDate) return (false, "Reminder date cannot be after expiry date.", null);
+        var reminder = new Reminder { DocumentId = document.Id, ReminderDate = request.ReminderDate!.Value }; db.Reminders.Add(reminder); await db.SaveChangesAsync(); return (true, null, new(reminder.Id, document.Id, document.DocumentName, reminder.ReminderDate, document.ExpiryDate, reminder.IsCompleted));
     }
-    public async Task<bool> UpdateAsync(int userId, int id, UpdateReminderDto request) { var reminder = await db.Reminders.Include(x => x.Document).SingleOrDefaultAsync(x => x.Id == id && x.Document.UserId == userId); if (reminder is null || request.ReminderDate > reminder.Document.ExpiryDate) return false; reminder.ReminderDate = request.ReminderDate!.Value; reminder.IsCompleted = request.IsCompleted; await db.SaveChangesAsync(); return true; }
+    public async Task<bool> UpdateAsync(int userId, int id, UpdateReminderDto request) { var reminder = await db.Reminders.Include(x => x.Document).SingleOrDefaultAsync(x => x.Id == id && x.Document.UserId == userId); if (reminder is null || (request.ReminderDate.HasValue && DateOnly.FromDateTime(request.ReminderDate.Value) > reminder.Document.ExpiryDate)) return false; reminder.ReminderDate = request.ReminderDate!.Value; reminder.IsCompleted = request.IsCompleted; await db.SaveChangesAsync(); return true; }
     public async Task<bool> DeleteAsync(int userId, int id) { var reminder = await db.Reminders.Include(x => x.Document).SingleOrDefaultAsync(x => x.Id == id && x.Document.UserId == userId); if (reminder is null) return false; db.Reminders.Remove(reminder); await db.SaveChangesAsync(); return true; }
 }
