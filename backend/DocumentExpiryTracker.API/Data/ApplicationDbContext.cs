@@ -12,6 +12,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<UserSetting> UserSettings => Set<UserSetting>();
     public DbSet<Reminder> Reminders => Set<Reminder>();
+    public DbSet<DocumentNotification> DocumentNotifications => Set<DocumentNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,6 +23,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.Entity<Document>().HasIndex(x => x.CategoryId);
         modelBuilder.Entity<Document>().HasIndex(x => x.ExpiryDate);
         modelBuilder.Entity<Document>().HasIndex(x => x.DocumentName);
+        modelBuilder.Entity<Document>().Property(x => x.ExpiryDate).HasColumnType("date");
+        modelBuilder.Entity<Document>().Property(x => x.ReminderDate).HasColumnType("date");
         modelBuilder.Entity<User>().HasOne(x => x.Settings).WithOne(x => x.User)
             .HasForeignKey<UserSetting>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Document>().HasOne(x => x.User).WithMany(x => x.Documents)
@@ -30,6 +33,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<Reminder>().HasOne(x => x.Document).WithMany(x => x.Reminders)
             .HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<DocumentNotification>().HasIndex(x => x.DocumentId).IsUnique();
+        modelBuilder.Entity<DocumentNotification>().Property(x => x.LastReadStatus).HasMaxLength(32);
+        modelBuilder.Entity<DocumentNotification>().HasOne(x => x.Document).WithOne(x => x.Notification)
+            .HasForeignKey<DocumentNotification>(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<DocumentCategory>().HasData(
             new DocumentCategory { Id = 1, Name = "Passport", CreatedAt = SeedCreatedAt },
             new DocumentCategory { Id = 2, Name = "Driving Licence", CreatedAt = SeedCreatedAt },

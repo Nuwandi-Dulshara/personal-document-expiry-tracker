@@ -1,4 +1,4 @@
-@if (id && !document) {
+@if (id && !document()) {
   <app-empty title="Document not found" message="This document may have been deleted."
     ><a class="btn primary" routerLink="/documents">Back to Documents</a></app-empty
   >

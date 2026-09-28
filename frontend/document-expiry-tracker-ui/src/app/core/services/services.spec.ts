@@ -110,4 +110,19 @@ describe('frontend mock data workflows', () => {
     expect(auth.loggedIn()).toBe(false);
     expect(sessionStorage.getItem('tracker-session')).toBeNull();
   });
+
+  it('keeps a valid persisted token active and clears expired ones on refresh', () => {
+    const now = Math.floor(Date.now() / 1000);
+    const validToken = `header.${btoa(JSON.stringify({ exp: now + 3600 }))}.signature`;
+    const expiredToken = `header.${btoa(JSON.stringify({ exp: now - 60 }))}.signature`;
+
+    localStorage.setItem('document-tracker-token', validToken);
+    const valid = TestBed.inject(AuthService);
+    expect(valid.loggedIn()).toBe(true);
+
+    localStorage.setItem('document-tracker-token', expiredToken);
+    const expired = TestBed.inject(AuthService);
+    expect(expired.loggedIn()).toBe(false);
+    expect(localStorage.getItem('document-tracker-token')).toBeNull();
+  });
 });
